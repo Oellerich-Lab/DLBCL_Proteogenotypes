@@ -5,7 +5,7 @@ This respository contains code from the analyis presented in the paper:
 
 ## Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
-"Enssle JC1,2,3,4,*, Häupl B1,2,3,*, Qoku A1,2,*, Wang B4, Wright GW4, Barrans S5, Care MA6, Burton C5, Gribbin C7, Eckert S2,8, Scheich S1,2,3,9, Wolf S1,2,3, Phelan J4, Huang DW4, Di Fonzo A1,3, Pape M1, Bodach M1,2, Jahn D1,2, Plessmann U2,10, Lenz G11, Ott G12, Hodson D13, Küster B2,8, Schmitz R14, Urlaub H10,15, Tooze R5,16, Inghirami G17, Buettner F1,2,3,†, Staudt LM4,† , Oellerich T1,2,3,9†,#"
+*Enssle JC1,2,3,4,*, Häupl B1,2,3,*, Qoku A1,2,*, Wang B4, Wright GW4, Barrans S5, Care MA6, Burton C5, Gribbin C7, Eckert S2,8, Scheich S1,2,3,9, Wolf S1,2,3, Phelan J4, Huang DW4, Di Fonzo A1,3, Pape M1, Bodach M1,2, Jahn D1,2, Plessmann U2,10, Lenz G11, Ott G12, Hodson D13, Küster B2,8, Schmitz R14, Urlaub H10,15, Tooze R5,16, Inghirami G17, Buettner F1,2,3,†, Staudt LM4,† , Oellerich T1,2,3,9†,#*
 
 Affiliations:	
 1	Department of Medicine, University Hospital, Goethe University Frankfurt, Frankfurt am Main, Germany
