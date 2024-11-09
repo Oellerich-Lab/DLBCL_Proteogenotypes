@@ -5,7 +5,7 @@ This respository contains code from the analyis presented in the paper:
 
 ## Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
-*Enssle JC<sup>1,2,3,4,A</sup> Häupl B<sup>1,2,3,A Qoku A<sup>1,2,A Wang B4, Wright GW4, Barrans S5, Care MA6, Burton C5, Gribbin C7, Eckert S2,8, Scheich S1,2,3,9, Wolf S1,2,3, Phelan J4, Huang DW4, Di Fonzo A1,3, Pape M1, Bodach M1,2, Jahn D1,2, Plessmann U2,10, Lenz G11, Ott G12, Hodson D13, Küster B2,8, Schmitz R14, Urlaub H10,15, Tooze R5,16, Inghirami G17, Buettner F1,2,3,†, Staudt LM4,† , Oellerich T1,2,3,9†,#*
+*Enssle JC<sup>1,2,3,4,A</sup> Häupl B<sup>1,2,3,A</sup> Qoku A<sup>1,2,A</sup> Wang B<sup>4</sup>, Wright GW<sup>4</sup>, Barrans S<sup>5</sup>, Care MA<sup>6</sup>, Burton C<sup>5</sup>, Gribbin C<sup>7</sup>, Eckert S<sup>2,8</sup>, Scheich S<sup>1,2,3,9</sup>, Wolf S<sup>1,2,3</sup>, Phelan J<sup>4</sup>, Huang DW<sup>4</sup>, Di Fonzo A<sup>1,3</sup>, Pape M<sup>1</sup>, Bodach M<sup>1,2</sup>, Jahn D<sup>1,2</sup>, Plessmann U<sup>2,10</sup>, Lenz G<sup>11</sup>, Ott G<sup>12</sup>, Hodson D<sup>13</sup>, Küster B<sup>2,8</sup>, Schmitz R<sup>14</sup>, Urlaub H<sup>10,15</sup>, Tooze R<sup>5,16</sup>, Inghirami G<sup>17</sup>, Buettner F<sup>1,2,3,†</sup>, Staudt LM<sup>4,†</sup>, Oellerich T<sup>1,2,3,9†,#</sup>*
 
 Affiliations:	
 1	Department of Medicine, University Hospital, Goethe University Frankfurt, Frankfurt am Main, Germany
