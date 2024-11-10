@@ -1,0 +1,621 @@
+---
+title: "20230423_scATAC_Archr"
+author: "jenssle"
+date: "23 4 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load packages 
+
+```{r}
+library(ArchR)
+library(tidyverse)
+library(Seurat)
+library(SeuratObject)
+```
+
+### Set input files
+
+First, load the meta data table from Boya 
+
+```{r}
+meta_scPG4 <- read_delim("~/sc_DLBCL/Staudt_scData/20230403.metadata.44dlbcl.tsv", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+```
+
+Now, define the locations of each fragment file
+
+```{r}
+# Define the names vector
+names_vec <- unique(meta_scPG4$orig.ident)
+
+# Define the folder path
+folder_path <- "/projects/dlbcl-sc/StaudtLab_scRNA_primary"
+
+# Create an empty named vector
+file_paths <- vector("character", length(names_vec))
+names(file_paths) <- names_vec
+
+# Loop over each element in names_vec and assign the corresponding file path
+for (i in seq_along(names_vec)) {
+  file_paths[i] <- file.path(folder_path, names_vec[i], "outs/atac_fragments.tsv.gz")
+}
+
+# Print the named vector
+file_paths
+```
+
+### ArchR settings
+
+```{r}
+addArchRGenome("hg38")
+```
+
+Set the threads for ArchR
+
+```{r}
+addArchRThreads(threads = 50) 
+```
+
+### Create Arrow files 
+
+Strict QC is performed while working with createArrowFiles(). Here, we filter for the **unique nuclear fragments** (number of fragments per cell, in our case >1000) and the **signal-to-background-ratio**, which is the TSS enrichment score. The idea is, that ATACseq data should be universally enriched at gene TSS regions compared to other genomic regaions, since large protein complexes bind to promotors. Investigating the per-basepair accessibility centered at these TSS regions compared to the flanking regions (2000bp up- and downstream), there should be a positive local enrichment centered at the TSS. The peak enrichment at TSS relative to the enrichment of the flanking regions represents the TSS. Thirdly, we can look at the **fragment size distribution**. Since DNA wraps around nucleosomes, there should be a nucleosomal periodicity in the distribution of fragment sizes (it should span 0,1,2... nucleosomes, since Tn5 cannot cut DNA that is tightly wrapped around a nucleosome).
+
+
+```{r}
+
+library(parallel)
+
+ArrowFiles1 <- createArrowFiles(
+  inputFiles = file_paths,
+  sampleNames = names(file_paths),
+  filterTSS = 4,
+  filterFrags = 1000, 
+  addTileMat = TRUE,
+  addGeneScoreMat = TRUE, 
+  verbose = TRUE
+)
+```
+
+Inspect arrow files 
+
+```{r}
+ArrowFiles1
+```
+
+Here, we also added a **Tile matrix**, which contains the insertion counts across 500bp wide genome bins and the **GeneScoreMatrix** which stores the predicted gene expression based on weighting insertion counts.
+
+### Inferring doublets 
+
+Here, we infer cells, that appear as a single cell but in fact a single barcode bead with more than one nucleus hence representing the average of more than one cell. This is done in a predictive fashion, where over many iterations, cells are compared to synthetic doublets and removed if too similar.
+
+```{r}
+doubScores <- addDoubletScores(
+  input = ArrowFiles1,
+  k = 10, 
+  knnMethod = "UMAP", 
+  LSIMethod = 1
+)
+```
+
+### Create ArchR project 
+
+```{r}
+proj <- ArchRProject(
+  ArrowFiles = ArrowFiles1, 
+  outputDirectory = "ArchRproj",
+  copyArrows = TRUE 
+)
+```
+
+Check for the available matrices.
+
+```{r}
+getAvailableMatrices(proj)
+```
+
+Filter the putative doublets based on the inferred doublet scores. 
+
+```{r}
+proj <- filterDoublets(ArchRProj = proj)
+```
+
+### Plot sample statistics
+
+```{r}
+plotGroups(
+    ArchRProj = proj, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "TSSEnrichment",
+    plotAs = "violin"
+   )
+```
+
+```{r}
+plotGroups(
+    ArchRProj = proj, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "log10(nFrags)",
+    plotAs = "violin",
+    alpha = 0.4,
+    addBoxPlot = TRUE
+   )
+```
+
+```{r}
+plotFragmentSizes(ArchRProj = proj,
+    groupBy = "Sample", 
+    threads = getArchRThreads())
+```
+
+### LSI dimreduction
+
+The dimension reduction of scATAC data works on sparse binarized matrices, that either have a 1 (is accessible) or 0 (no information, meaning either not accessible or not measured).
+
+First, we use **Latent Semantic Indexing (LSI)**, an approach from natural language processing that was originally designed to assess document similarity based on word counts. This solution was created for natural language processing because the data is sparse and noisy (many different words and many low frequency words). LSI was first introduced for scATAC-seq by Cusanovich et al. (Science 2015). In the case of scATAC-seq, different samples are the documents and different regions/peaks are the words. First, we calculate the term frequency by depth normalization per single cell. These values are then normalized by the inverse document frequency which weights features by how often they occur to identify featres that are more “specific” rather than commonly accessible. The resultant term **frequency-inverse document frequency (TF-IDF) matrix** reflects how important a word (aka region/peak) is to a document (aka sample). Then, through a technique called singular value decomposition (SVD), the most valuable information across samples is identified and represented in a lower dimensional space. LSI allows you to reduce the dimensionality of the sparse insertion counts matrix from many thousands to tens or hundreds. 
+
+To overcome challenging issues of LSI by peak regions (aggregating cells prior to peak calling, change of union peak set once new samples are intergrated ...), we use genome-wide tiles (the **TileMatrix**), to mitigate these issues by using a consistent and unbiased feature set (genome-wide tiles). However, a genome-wide tile matrix of all cells by all regions can become prohibitively large. For this reason, most implementations use tiles that are greater than or equal to 5 kilobases in size.
+
+```{r}
+proj <- addIterativeLSI(ArchRProj = proj, useMatrix = "TileMatrix", name = "IterativeLSI" )
+```
+
+Add UMAP visualization. 
+
+```{r}
+proj <- addUMAP(ArchRProj = proj, reducedDims = "IterativeLSI")
+```
+
+Add meta data. 
+
+```{r}
+df <- getCellColData(proj, select = c("Sample")) %>%
+  as.data.frame() %>%
+  rownames_to_column("cellNames") %>%
+  left_join(meta_scPG4 %>%
+              mutate(cellNames = paste0(orig.ident, "#", cellbarcode)),
+            by = "cellNames")
+
+proj$celltype <- df$celltype
+```
+
+Visualize.
+
+```{r}
+plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "celltype", embedding = "UMAP")
+```
+
+There is obviously still a relevant batch effect. Hence, correct this via Harmony.
+
+```{r}
+proj <- addHarmony(
+    ArchRProj = proj,
+    reducedDims = "IterativeLSI",
+    name = "Harmony",
+    groupBy = "Sample"
+)
+```
+
+Add another umap information
+
+```{r}
+proj <- addUMAP(ArchRProj = proj, reducedDims = "Harmony", name = "UMAP_Harmony")
+```
+
+Visualize
+
+```{r}
+plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "celltype", embedding = "UMAP_Harmony")
+```
+
+Subset the project to those cells also passing the quality controls in RNA and the published data from Wang et al..
+
+```{r}
+meta_df_pg4 <- meta_scPG4 %>%
+              mutate(cellNames = paste0(orig.ident, "#", cellbarcode))
+
+projPG4 <- proj[proj$cellNames %in% meta_df_pg4$cellNames,]
+
+projPG4
+```
+
+Run the Harmony batch correction once more now on the subsetted dataset.
+
+```{r}
+projPG4 <- addHarmony(
+    ArchRProj = projPG4,
+    reducedDims = "IterativeLSI",
+    name = "Harmony1",
+    groupBy = "Sample"
+)
+```
+
+Add another UMAP information.
+
+```{r}
+projPG4 <- addUMAP(ArchRProj = projPG4, reducedDims = "Harmony1", name = "UMAP_Harmony1")
+```
+
+Visualize.
+
+```{r}
+plotEmbedding(ArchRProj = projPG4, colorBy = "cellColData", name = "celltype", embedding = "UMAP_Harmony")
+```
+
+Show once more the quality information
+
+```{r}
+plotGroups(
+    ArchRProj = projPG4, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "TSSEnrichment",
+    plotAs = "violin"
+   )
+```
+
+```{r}
+plotGroups(
+    ArchRProj = projPG4, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "log10(nFrags)",
+    plotAs = "violin",
+    alpha = 0.4,
+    addBoxPlot = TRUE
+   )
+```
+
+Visualize once more. 
+
+```{r}
+plotEmbedding(ArchRProj = projPG4, colorBy = "cellColData", name = "celltype", embedding = "UMAP_Harmony")
+```
+
+## Peak Calling MACS2
+
+First, specify the path to MACS2
+
+```{r}
+pathToMacs2 <- findMacs2()
+```
+
+Second, generate the pseudo-bulk replicates for the celltypes inferred by Wang et al..
+
+```{r}
+projPG4 <- addGroupCoverages(ArchRProj = projPG4, groupBy = "celltype")
+```
+
+Now, call peaks with MACS2.
+
+```{r}
+projPG4 <- addReproduciblePeakSet(
+    ArchRProj = projPG4, 
+    groupBy = "celltype", 
+    pathToMacs2 = pathToMacs2
+)
+```
+
+Add the peak matrix. 
+
+```{r}
+projPG4 <- addPeakMatrix(projPG4)
+```
+
+Check if all matrices are available. 
+
+```{r}
+getAvailableMatrices(projPG4)
+```
+
+### Marker Peaks 
+
+Now, lets find the marker peaks for the cell types. 
+
+```{r}
+markersPeaks <- getMarkerFeatures(
+    ArchRProj = projPG4, 
+    useMatrix = "PeakMatrix", 
+    groupBy = "celltype",
+  bias = c("TSSEnrichment", "log10(nFrags)"),
+  testMethod = "wilcoxon"
+)
+```
+
+Visualize the significant marker features. 
+
+```{r}
+heatmapPeaks <- markerHeatmap(
+  seMarker = markersPeaks, 
+  cutOff = "FDR <= 0.1 & Log2FC >= 0.5",
+  transpose = TRUE
+)
+
+draw(heatmapPeaks, heatmap_legend_side = "bot", annotation_legend_side = "bot")
+```
+
+Now, we are interested to identify differences for PG4 malignant and nonPG4 malignant cells. Hence, we will adjust the cell type label for the malignant B cells. Then we again derive marker features and compare the output. 
+
+```{r}
+library(readxl)
+
+getCellColData(projPG4)
+
+pg4_pred <- read_excel("20230403_ProtGen_Samples_Mapped.xlsx")  %>%
+  filter(ProtGen_SG == "4")
+
+projPG4$pg4celltype <-
+  (
+    getCellColData(projPG4) %>%
+      as.data.frame() %>%
+      # mutate(
+      #   pg4celltype = case_when(
+      #     Sample %in% pg4_pred$Frankfurt_ID &
+      #       celltype == "B_DLBCL_Malig" ~ paste0("PG4", "_", celltype),
+      #     TRUE ~ celltype
+      #   )
+      rownames_to_column("CellName") %>%
+      mutate(pg4ngbh = case_when(CellName %in% ngbh_extrct$CellName ~ "pg4", TRUE ~ "other")) %>%
+      mutate(
+        pg4celltype = case_when(
+          pg4ngbh == "pg4" &
+            celltype == "B_DLBCL_Malig" ~ paste0("PG4", "_", celltype),
+          TRUE ~ celltype
+        )
+    
+      )
+  )$pg4celltype
+```
+
+Identify the PG4 malignant B cell marker features. 
+
+```{r}
+markerTestPG4 <- getMarkerFeatures(
+  ArchRProj = projPG4,
+  useMatrix = "PeakMatrix",
+  groupBy = "pg4celltype",
+  testMethod = "wilcoxon",
+  bias = c("TSSEnrichment", "log10(nFrags)"),
+  useGroups = "PG4_B_DLBCL_Malig",
+  bgdGroups = "B_DLBCL_Malig"
+)
+
+pg4marker_peaks$PG4_B_DLBCL_Malig <- getMarkers(markerTestPG4, cutOff = "FDR <= 0.1 & Log2FC >= 1", returnGR = TRUE)["PG4_B_DLBCL_Malig"]$PG4_B_DLBCL_Malig
+
+rowData(markerTestPG4)
+```
+
+Visualize as volcano plot. 
+
+```{r}
+markerPlot(seMarker = markerTestPG4, name = "PG4_B_DLBCL_Malig", cutOff = "FDR <= 0.1 & abs(Log2FC) >= 0.75", plotAs = "Volcano")
+```
+
+Now, it is interesting to see, whether some of these PG4malignant marker peaks are also found in those genes found to be diff expressed.
+
+```{r}
+idx <- which(projPG4$pg4celltype == c("PG4_B_DLBCL_Malig", "B_DLBCL_Malig", "B_DLBCL_notMalig"))
+cellsPass <- projPG4$cellNames[idx]
+
+p <- plotBrowserTrack(
+    ArchRProj = projPG4[cellsPass,], 
+    groupBy = "pg4celltype", 
+    geneSymbol = c("RPL10"),
+    features =  getMarkers(markerTestPG4, cutOff = "FDR <= 0.1 & Log2FC >= 1", returnGR = TRUE)["PG4_B_DLBCL_Malig"]$PG4_B_DLBCL_Malig,
+    upstream = 25000,
+    downstream = 25000
+)
+
+grid::grid.newpage()
+grid::grid.draw(p$RPL10)
+```
+
+## Gene Score markers
+
+Search for gene score markers by wilcoxon test.
+
+```{r}
+markersGS <- getMarkerFeatures(
+    ArchRProj = projPG4, 
+    useMatrix = "GeneScoreMatrix", 
+    groupBy = "pg4celltype",
+    bias = c("TSSEnrichment", "log10(nFrags)"),
+    testMethod = "wilcoxon"
+)
+```
+
+Select the marker features.
+
+```{r}
+markerList <- getMarkers(markersGS, cutOff = "FDR <= 0.01 & Log2FC >= 1")
+
+markerList$PG4_B_DLBCL_Malig
+```
+
+Check if these marker features come from a specific biological background. 
+
+```{r}
+library(clusterProfiler)
+
+staudt_sig_sets <- readRDS("20230419_staudt_gene_sets.rds")
+
+m_t2g <- do.call(rbind, 
+                 lapply(names(staudt_sig_sets), 
+                        function(x) data.frame(name = x, 
+                                               value = staudt_sig_sets[[x]],
+                                               stringsAsFactors = FALSE)
+                        )
+                 )
+
+colnames(m_t2g) <- c("term", "gene")
+
+genescoremarkers <- as.data.frame(markerList$PG4_B_DLBCL_Malig)$name
+
+x2 <- clusterProfiler::enricher(genescoremarkers, TERM2GENE = m_t2g)
+
+dotplot(x2) 
+```
+
+Next, we can see whether there is certain enrichment phenotype in these cells. 
+
+Here, we first add the motif presence to the peak set information. 
+
+```{r}
+projPG4 <- addMotifAnnotations(ArchRProj = projPG4, motifSet = "cisbp", name = "Motif")
+```
+
+Test the differentially accessible peaks for enrichment of various motifs. 
+
+```{r}
+motifsUp <- peakAnnoEnrichment(
+    seMarker = markerTestPG4,
+    ArchRProj = projPG4,
+    peakAnnotation = "Motif",
+    cutOff = "FDR <= 0.1 & Log2FC >= 0.5"
+  )
+```
+
+Prepare this output for plotting. 
+
+```{r}
+df <- data.frame(TF = rownames(motifsUp), mlog10Padj = assay(motifsUp)[,1])
+df <- df[order(df$mlog10Padj, decreasing = TRUE),]
+df$rank <- seq_len(nrow(df))
+```
+
+Visualize.
+
+```{r}
+ggplot(df, aes(rank, mlog10Padj, color = mlog10Padj)) +
+  geom_point() +
+  ggrepel::geom_text_repel(df[1:30,], mapping = aes(rank, mlog10Padj, label = TF), max.overlaps = Inf) +
+  theme_bw() +
+  scale_color_viridis_c() 
+```
+
+Lets compare the most abundant TF motif enrichments for all celltypes.
+
+```{r}
+markersPeaks <- getMarkerFeatures(
+  ArchRProj = projPG4,
+  useMatrix = "PeakMatrix",
+  groupBy = "pg4celltype",
+  bias = c("TSSEnrichment", "log10(nFrags)"),
+  testMethod = "wilcoxon"
+)
+
+markersPeaks[, c("B_DLBCL_Malig", "PG4_B_DLBCL_Malig")]
+
+```
+
+Now, annotate the peaks by enrichment. 
+
+```{r}
+enrichMotifs <- peakAnnoEnrichment(
+    seMarker = markersPeaks[, c("B_DLBCL_Malig", "PG4_B_DLBCL_Malig")],
+    ArchRProj = projPG4,
+    peakAnnotation = "Motif",
+    cutOff = "FDR <= 0.1 & Log2FC >= 0.5"
+  )
+```
+
+```{r}
+plotEnrichHeatmap(enrichMotifs, n = 60, transpose = TRUE) %>%
+  ComplexHeatmap::draw(heatmap_legend_side = "bot", annotation_legend_side = "bot")
+```
+
+## Object extraction for multi modal integration 
+
+First, extract the meta data. 
+
+```{r}
+metadata <- as.data.frame(projPG4@cellColData)
+```
+
+Load the seurat object and subset to those cells also present in the ArchR atac data. 
+
+```{r}
+library(SeuratObject)
+
+seurat_dlcbl <- readRDS("seurat.integrated.rds")
+
+df <- seurat_dlcbl[[]] %>%
+  as.data.frame() %>%
+  rownames_to_column("id") %>%
+  separate(id, c("id", "rm"), sep = "_") %>%
+  mutate(new_id = paste0(orig.ident, "#", id))
+
+colnames(seurat_dlcbl) <- c(df$new_id)
+
+#rename the cells for subsetting
+seurat_ob <- RenameCells(seurat_dlcbl,
+                         old.names = colnames(seurat_dlcbl), 
+                         new.names = df$new_id)
+
+seurat_ob[["CellName"]] <- colnames(seurat_ob)
+
+#subset the seurat object
+seurat_ob <- subset(seurat_ob, subset = CellName %in% rownames(metadata))
+Idents(seurat_ob) <- "CellName"
+```
+
+Generate SummarizedExperiment object for the PeakMatrix information.
+
+```{r}
+peak_counts <- getMatrixFromProject(projPG4, useMatrix='PeakMatrix')
+```
+
+Generate a chromatin assay from this data. 
+
+```{r}
+library(Seurat)
+library(Signac)
+
+peak_counts <- peak_counts[, seurat_ob[[]]$CellName]
+
+chrom_assay <- CreateChromatinAssay(
+  counts = assays(peak_counts)$PeakMatrix,
+  ranges = rowRanges(peak_counts),
+  sep = c("_", "_"),
+  min.cells = 100
+)
+
+colnames(chrom_assay)
+```
+
+Add the peakmatrix to the seurat object.
+
+```{r}
+seurat_ob[["ATAC"]] <- chrom_assay
+```
+
+Add the harmony adjusted LSI dimred.
+
+```{r}
+#Extract the dimension reduction
+harmony_matDR <- projPG4@reducedDims$Harmony$matDR
+
+#adjust the naming 
+colnames(harmony_matDR) <- paste0("Harmony_", 1:ncol(harmony_matDR))
+
+#subset to present cells 
+harmony_matDR <- harmony_matDR[colnames(seurat_ob), ]
+
+seurat_ob[["harmony_lsi"]] <- CreateDimReducObject(embeddings = harmony_matDR,
+                                             assay = DefaultAssay(seurat_ob),
+                                             key = "Harmony_")
+```
+
+Safe the resulting data object. 
+
+```{r}
+saveRDS(seurat_ob, "seurat_ob_RNA_ATAC.rds")
+```
+

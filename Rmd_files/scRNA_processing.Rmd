@@ -1,0 +1,133 @@
+---
+title: "scRNA_processing"
+author: "jenssle"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Packages 
+
+```{r}
+library(tidyverse)
+library(Seurat)
+library(Signac)
+library(EnsDb.Hsapiens.v86)
+```
+
+## Data 
+
+The respective scRNA and scATAC data for 43 patients which were mapped to one of the proteogenomic subgroups was processed via 10X multiome platform and CellRanger. The resulting CellRanger output has already been loaded by Boya Wang into seurat objects. This data is accessible at TBI.
+
+Load the meta data.
+
+```{r}
+meta_scPG4 <- read_delim("~/sc_DLBCL/Staudt_scData/20230403.metadata.44dlbcl.tsv", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+```
+
+## RNA integration only
+
+First, generate a list from all objects and clear the ATAC assay slot.
+
+```{r}
+cornell_obj <- ls()[1:43]
+
+#generate the list object
+seurat_list <- list(get(cornell_obj[1]))
+
+for(i in 2:length(cornell_obj)){
+  
+  seurat_list <- append(seurat_list, get(cornell_obj[i]))
+  
+}
+
+#set the atac slot to NULL
+for(i in seq(length(seurat_list))) {
+  
+  seurat_list[[i]][["ATAC"]] <- NULL
+  
+}
+
+#remove all individual files  
+rm(list = cornell_obj)
+```
+
+#### Basic QC
+
+Perform basic QC for the objects.
+
+```{r}
+for(i in seq(length(seurat_list))) {
+  
+  seurat_list[[i]] <- subset(
+  x = seurat_list[[i]],
+  subset = 
+    #nCount_ATAC < max(meta_scPG4$nCount_ATAC) &
+    #nCount_ATAC > min(meta_scPG4$nCount_ATAC) &
+    nCount_RNA < max(meta_scPG4$nCount_RNA) &
+    nCount_RNA > min(meta_scPG4$nCount_RNA) &
+    percent.mt < max(meta_scPG4$percent.mt)
+)
+}
+```
+
+#### Perform Anchor-based integration
+
+RPCA-based integration runs significantly faster, and also represents a more conservative approach where cells in different biological states are less likely to ‘align’ after integration.
+
+Find the highly variable features in all objects, later used as integration features.
+
+```{r}
+library(future)
+
+plan("multisession", workers = 8)
+
+options(future.globals.maxSize = 80000 * 1024^2)
+# normalize and identify variable features for each dataset independently
+seurat_list <- lapply(X = seurat_list, FUN = function(x) {
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+
+# select features that are repeatedly variable across datasets for integration
+features <- SelectIntegrationFeatures(object.list = seurat_list)
+```
+
+Run the scaling and PCA in each object.
+
+```{r}
+seurat_list <- lapply(X = seurat_list, FUN = function(x) {
+    x <- ScaleData(x, features = features, verbose = FALSE)
+    x <- RunPCA(x, features = features, verbose = FALSE)
+})
+```
+
+Find the pca integration anchors in each sc object's PCA space and constrain the anchors by the same mutual neighborhood requirement.
+
+```{r}
+library(future)
+
+plan("multisession", workers = 4)
+
+options(future.globals.maxSize = 80000 * 1024^2)
+
+anchors1 <- FindIntegrationAnchors(object.list = seurat_list, reduction = "rpca",
+    dims = 1:50)
+```
+
+Perform the integration.
+
+```{r}
+seurat.integrated <- IntegrateData(anchorset = anchors1, dims = 1:50)
+```
+
+Save the resulting object.
+
+```{r}
+seurat.integrated <- readRDS("seurat.integrated.rds")
+```

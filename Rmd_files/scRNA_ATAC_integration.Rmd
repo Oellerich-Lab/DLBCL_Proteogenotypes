@@ -1,0 +1,175 @@
+---
+title: "scRNA_ATAC_integration"
+author: "jenssle"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+### Load packages 
+
+```{r}
+library(ArchR)
+library(tidyverse)
+library(Seurat)
+library(SeuratObject)
+library(scater)
+library(scran)
+library(scuttle)
+library(patchwork)
+library(bluster)
+library(batchelor)
+library(miloR)
+library(scCustomize)
+```
+
+### Load seurat object 
+
+The scRNA data and the scATAC data were processed independently and finally merged for all cells with present meta data and sufficient quality metrics in scRNA and scATAC.
+
+```{r}
+seurat_ob <- readRDS("seurat_ob_RNA_ATAC.rds")
+```
+
+### WNN integration
+
+The weighted nearest neighbor (WNN) procedure implemented in Seurat v4 is designed to integrate multiple types of data that are collected in the same cells to define a single unified representation of single-cell multimodal data. For each cell, the procedure learns a set of modality weights, which reflect the relative information content for each data type in that cell. 
+
+(1) Constructing independent k-nearest neighbor (KNN) graphs for each modalities. 
+(2) Performing within and across-modality prediction 
+(3) Calculating cell-specific modality weights. 
+(4) Calculating a WNN graph.
+
+Using the implemented weighted-nearest-neighbour integration method, we integrate the reduced dimension from RNA (pca) amd the harmonized LSI from ATAC data.
+
+```{r}
+seurat_ob <- FindMultiModalNeighbors(seurat_ob, reduction.list = list("pca", "harmony_lsi"), dims.list = list(1:50, 2:30))
+```
+
+Run UMAP on the dimred.
+
+```{r}
+seurat_ob <- RunUMAP(seurat_ob, nn.name = "weighted.nn", reduction.name = "wnn.umap", reduction.key = "wnnUMAP_")
+```
+
+Plot for RNA integrated PCA. 
+
+```{r}
+DimPlot(seurat_ob, group.by = c("celltype", "orig.ident"), reduction = "umap", label = FALSE, label.size = 2.5, repel = TRUE, raster = FALSE)
+```
+
+Plot for ATAC harmony LSI UMAP. 
+
+```{r}
+seurat_ob <- RunUMAP(seurat_ob, reduction = 'harmony_lsi', dims = 2:30, reduction.name = "umap.atac", reduction.key = "atacUMAP_")
+
+DimPlot(seurat_ob, group.by = c("celltype", "orig.ident"), reduction = "umap.atac", label = FALSE, label.size = 2.5, repel = TRUE,  raster = FALSE)
+```
+
+Plot for the integrated dimension.
+
+```{r}
+DimPlot(seurat_ob, group.by = c("celltype", "orig.ident"), reduction = "wnn.umap", label = FALSE, label.size = 2.5, repel = TRUE, raster = FALSE)
+```
+
+### Milo DA on WNN
+
+First, transform the object into sce. 
+
+```{r}
+seurat_ob <- RunPCA(seurat_ob, nn.name = "weighted.nn", reduction.name = "wnn.pca", reduction.key = "wnnPCA_")
+
+DefaultAssay(seurat_ob) <- "RNA"
+
+sce.ob <- as.SingleCellExperiment(seurat_ob)
+
+DefaultAssay(seurat_ob) <- "integrated"
+#map also the already generated umap to the sce object
+reducedDim(sce.ob, "wnn.umap") <- Embeddings(seurat_ob, reduction = "wnn.umap")
+
+reducedDim(sce.ob, "wnn.pca") <- Embeddings(seurat_ob, reduction = "wnn.pca")
+
+milo.sce<- Milo(sce.ob)
+```
+
+Add the precomputed WNN graph from the seurat processing. 
+
+```{r}
+set.seed(42)
+milo_graph <- buildFromAdjacency(seurat_ob@graphs$wknn, k = 20, is.binary = TRUE) 
+
+graph(milo.sce) <- miloR::graph(milo_graph)
+```
+
+Define the nhoods. 
+
+```{r}
+set.seed(42)
+milo.sce <- makeNhoods(milo.sce, prop = 0.05, k = 200, refinement_scheme="graph", refined = TRUE)
+
+plotNhoodSizeHist(milo.sce)
+```
+
+Counting the cells. 
+
+```{r}
+set.seed(42)
+milo.sce <- countCells(milo.sce, 
+                                    meta.data= as.data.frame(colData(milo.sce)),
+                                    sample = "orig.ident")
+
+head(nhoodCounts(milo.sce))
+```
+
+Generate the design matrix. 
+
+```{r}
+milo_design <- data.frame(colData(milo.sce))[,c("orig.ident", "celltype")]
+
+pg4_vec <- c("cornell_105", "cornell_110", "cornell_122", "cornell_130", "cornell_137", "cornell_19", "cornell_2", "cornell_21")
+
+milo_design <- milo_design %>%
+  mutate(pg4 = case_when(orig.ident %in% pg4_vec ~ "pg4", TRUE ~ "other")) %>%
+  distinct(orig.ident, .keep_all = TRUE)
+
+rownames(milo_design) <- milo_design$orig.ident
+
+milo_design
+```
+
+Compute the neighbourhood connectivity. This function will calculate Euclidean distances between single-cells in a neighbourhood using the same dimensionality as was used to construct the graph. Since we do not have a dimreduction but started directly with the multi-modal graph, we compute the PCA on the wnn graph and supply this as the dimred to the function.
+
+```{r}
+set.seed(42)
+milo.sce <- calcNhoodDistance(milo.sce, d=20, reduced.dim = "wnn.pca")
+```
+
+Run the testing. 
+
+```{r}
+da_results <- testNhoods(milo.sce, 
+                         design = ~ pg4, 
+                         design.df = milo_design,
+                         reduced.dim = "wnn.pca",
+                         fdr.weighting="graph-overlap"
+                         )
+```
+
+Visualize the readout. 
+
+```{r, fig.height=6, fig.width=12}
+library(scales)
+set.seed(42)
+milo.sce <- buildNhoodGraph(milo.sce)
+
+## Plot single-cell UMAP
+pl <- plotReducedDim(milo.sce, dimred = "wnn.umap", colour_by="celltype", 
+                          text_size = 3, point_size=0.05) +
+  guides(fill="none") +
+  scale_color_manual(values = hue_pal()(13))
+
+## Plot neighbourhood graph
+nh_pl <- plotNhoodGraphDA(milo.sce, da_results, layout="wnn.umap",alpha=0.1)
+  
+pl + nh_pl +
+  plot_layout(guides="collect")
+```

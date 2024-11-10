@@ -1,0 +1,214 @@
+---
+title: "DLBCL_PG_inference"
+author: "jenssle"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+```{r, warning=FALSE, message = FALSE}
+library(reticulate)
+library(basilisk)
+library(RANN)
+library(tidyverse)
+library(cola)
+library(psych)
+library(readxl) 
+library(broom)
+library(scrime)
+```
+
+## Load data
+
+First, load the 
+
+```{r}
+meta_ident_all <-
+  readRDS(
+    "~/Library/CloudStorage/OneDrive-JohannWolfgangGoetheUniversität/2021_DLBCL_proteogenomics/R_data/20220315_meta_identifier_cohort.rds"
+  )
+```
+
+Load the latent space from the MuVi. The latent space comprises of latent factors from the integrated bulk RNA and global proteome expression data [MuVi model](https://github.com/MLO-lab/MuVI).
+
+```{r}
+Latent_space <-
+  read.csv(
+    "~/20220531_Z.csv" ,
+    header = TRUE
+  ) %>%
+  rename(c("X" = "Prot_id" )) %>%
+  column_to_rownames("Prot_id")
+
+Latent_space_meta <-
+  read.csv(
+    "~/20220531_factor_meta.csv" ,
+    header = TRUE
+  ) %>%
+  rename(c("X" = "factor")) %>%
+  mutate(sig_at_0.1_either_joint = case_when(
+    p_adj_pos_1_rna < 0.01 | p_adj_neg_1_rna < 0.01 ~ "True", #either pos or neg < 0.1 in RNA
+    p_adj_pos_2_prot < 0.01 | p_adj_neg_2_prot < 0.01 ~ "True", #either pos or neg < 0.1 in Prot
+    TRUE ~ "False" #means if none of the cases above is true
+  ))
+```
+
+## Proteogenotype inference
+
+To infer proteogenotypes, we  apply a graph-based community detection algorithm [Leiden algorithm](https://www.nature.com/articles/s41598-019-41695-z) in a consensus clustering framework. Therefore, we generate an adjacency matrix from the inferred and corrected latent factor space. With this adjacency matrix, Leiden-based communities are inferred iteratively. The resulting leiden-assignment x samples matrix is then subjected to a consensus clustering based approach, where there hamming-distance of the Leiden assignments is utilized for hierarchical clustering of the resulting proteogenotypes.
+
+First, generation of the adjacency matrix.
+
+```{r}
+t_space <- Latent_space_filt %>% as.matrix() %>% t()
+
+set.seed(42)
+snn <- RANN::nn2(t(t_space), k=15)$nn.idx
+
+snn 
+
+adjacency_matrix <- matrix(0L, ncol(t_space), ncol(t_space))
+
+rownames(adjacency_matrix) <- colnames(adjacency_matrix) <- colnames(t_space)
+for(i in 1:ncol(t_space)) {
+    adjacency_matrix[i,colnames(t_space)[snn[i,]]] <- 1L
+}
+
+#check that rows add to k
+sum(adjacency_matrix[1,]) == 15
+table(apply(adjacency_matrix, 1, sum))
+```
+
+Iterative Leiden-alg based community detection.
+
+```{r}
+#Retrieve names for labeling of the resulting leiden-communities x samples matrix
+Latent_space_prots1 <- as.data.frame(Latent_space_filt) %>% tibble::rownames_to_column("Prot_id")
+
+ident_global <- data.frame(Prot_id = Latent_space_prots1$Prot_id)
+
+for(i in 1:1000) {
+
+set.seed(sample(1:1000,1))
+partition_new <- leiden(adjacency_matrix, 
+                        partition_type = c("RBConfigurationVertexPartition"), # implements modularity to derive partition
+                        resolution_parameter = 1, 
+                        # weights = weights_obj,
+                        n_iterations = -1L, # set to negative --> algorithm runs until partition is not improved
+                        seed = sample(1:1000,1)
+                        )
+
+Latent_space_prots1 <- as.data.frame(Latent_space_filt) %>% tibble::rownames_to_column("Prot_id")
+
+ident_partition <- cbind(Latent_space_prots1$Prot_id, partition_new) %>% as.data.frame()
+
+colnames(ident_partition) <- c("Prot_id", i)
+
+ident_global <- left_join(ident_global, ident_partition, by = "Prot_id")
+
+}
+
+#get rownames and transpose the resulting df
+ident_global <- ident_global %>%
+  column_to_rownames("Prot_id") %>%
+  t() %>%
+  as.data.frame() 
+
+#mutate all variables to numeric
+ident_global_m <- mutate_all(ident_global, function(x) as.numeric(as.character(x)))
+```
+
+### Consensus clustering of iterative leiden assignments
+
+To run the consensus clustering, we rely on the package [cola](https://www.bioconductor.org/packages/release/bioc/html/cola.html). First, register the "take all" method for top values.
+
+```{r}
+register_top_value_methods(
+ 
+  all = function(mat) {
+    
+    all <- c(runif(n = nrow(mat), min = 1, max = 1))
+ 
+  }
+ 
+)
+```
+
+Second, register hclust on the basis of hamming distance.
+
+```{r}
+register_partition_methods(
+    hclust_hamming = function(mat, k) {
+      
+      library(tidyverse)
+      library(e1071)
+      
+      mat_fac <- mutate_all(as.data.frame(mat),as.factor)
+        
+      
+      ham_dist_fac <- e1071::hamming.distance(as.matrix(t(mat_fac)))
+      
+      res_clust <- cutree(hclust(as.dist(ham_dist_fac)), k)
+      
+      res_clust
+    }
+)
+```
+
+Run the consensus clustering using the hamming distance and hierarchical clustering
+
+```{r}
+leiden_rl <- run_all_consensus_partition_methods(
+  as.matrix(ident_global_m),
+  top_value_method = c("all"),
+  partition_method = c("hclust_hamming"),
+  mc.cores = 35,
+  top_n = nrow(ident_global_m),
+  max_k = max(ident_global_m),
+  scale_rows = FALSE
+  )
+```
+
+Now search for the best partitions of the repetitive Leiden clusters.
+
+```{r}
+suggest_best_k(leiden_rl)
+```
+
+Extract the results.
+
+```{r}
+res_leiden = leiden_rl["all", "hclust_hamming"]
+```
+
+Plot the respective consensus heatmap.
+
+```{r}
+consensus_heatmap(res_leiden, 7)
+```
+
+Highlight the membership heatmap.
+
+```{r}
+membership_heatmap(res_leiden, k = 7)
+```
+
+Show discrimination by dimension reduction.
+
+```{r}
+dimension_reduction(res_leiden, k = 7, method = "UMAP")
+```
+
+Now, extract the respective information of the class membership.
+
+```{r}
+res_class <- get_classes(res_leiden, k=7) %>%
+  rownames_to_column("Prot_id")
+
+head(res_class)
+```
