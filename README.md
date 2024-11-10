@@ -1,5 +1,4 @@
 # DLBCL_Proteogenotypes
-Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
 This respository contains code from the analysis presented in the paper: 
 
