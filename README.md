@@ -30,8 +30,10 @@ A,† These authors contributed equally
 
 Corresponding author (#) email: oellerich@em.uni-frankfurt.de 
 
-### Following code scripts are included:
+### Following analysis code is included:
 - TBI
+- scRNA and scATAC processing and integration, DA testing by miloR
+- To integrate data by MuVI, please visit: https://github.com/MLO-lab/MuVI
 
 ### Data availablity:
 - TBI
