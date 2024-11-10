@@ -1,7 +1,6 @@
 # DLBCL_Proteogenotypes
-Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
-This respository contains code from the analyis presented in the paper: 
+This respository contains code from the analysis presented in the paper: 
 
 ## Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
@@ -27,10 +26,13 @@ Affiliations:
 17	Department of Pathology and Laboratory Medicine, Weill Cornell Medicine, New York, NY, USA
 
 A,† These authors contributed equally
-#Corresponding author email: oellerich@em.uni-frankfurt.de 
 
-### Following code scripts are included:
+Corresponding author (#) email: oellerich@em.uni-frankfurt.de 
+
+### Following analysis code is included:
 - TBI
+- scRNA and scATAC processing and integration, DA testing by miloR
+- To integrate data by MuVI, please visit: https://github.com/MLO-lab/MuVI
 
 ### Data availablity:
 - TBI
