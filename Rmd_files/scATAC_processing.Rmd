@@ -23,7 +23,7 @@ library(SeuratObject)
 First, load the meta data table from Boya 
 
 ```{r}
-meta_scPG4 <- read_delim("~/sc_DLBCL/Staudt_scData/20230403.metadata.44dlbcl.tsv", 
+meta_scPG4 <- read_delim("~/scData/20230403.metadata.44dlbcl.tsv", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
 ```
@@ -35,7 +35,7 @@ Now, define the locations of each fragment file
 names_vec <- unique(meta_scPG4$orig.ident)
 
 # Define the folder path
-folder_path <- "/projects/dlbcl-sc/StaudtLab_scRNA_primary"
+folder_path <- "~/scData/scATAC"
 
 # Create an empty named vector
 file_paths <- vector("character", length(names_vec))
@@ -348,19 +348,13 @@ library(readxl)
 
 getCellColData(projPG4)
 
-pg4_pred <- read_excel("20230403_ProtGen_Samples_Mapped.xlsx")  %>%
+pg4_pred <- read_excel("~/scData/20230403_ProtGen_Samples_Mapped.xlsx")  %>%
   filter(ProtGen_SG == "4")
 
 projPG4$pg4celltype <-
   (
     getCellColData(projPG4) %>%
       as.data.frame() %>%
-      # mutate(
-      #   pg4celltype = case_when(
-      #     Sample %in% pg4_pred$Frankfurt_ID &
-      #       celltype == "B_DLBCL_Malig" ~ paste0("PG4", "_", celltype),
-      #     TRUE ~ celltype
-      #   )
       rownames_to_column("CellName") %>%
       mutate(pg4ngbh = case_when(CellName %in% ngbh_extrct$CellName ~ "pg4", TRUE ~ "other")) %>%
       mutate(
@@ -444,7 +438,7 @@ Check if these marker features come from a specific biological background.
 ```{r}
 library(clusterProfiler)
 
-staudt_sig_sets <- readRDS("20230419_staudt_gene_sets.rds")
+staudt_sig_sets <- readRDS("~/scData/20230419_staudt_gene_sets.rds") # the gene sets can be derived from https://lymphochip.nih.gov/signaturedb/
 
 m_t2g <- do.call(rbind, 
                  lapply(names(staudt_sig_sets), 
@@ -544,7 +538,7 @@ Load the seurat object and subset to those cells also present in the ArchR atac 
 ```{r}
 library(SeuratObject)
 
-seurat_dlcbl <- readRDS("seurat.integrated.rds")
+seurat_dlcbl <- readRDS("~/scData/seurat.integrated.rds")
 
 df <- seurat_dlcbl[[]] %>%
   as.data.frame() %>%
@@ -616,6 +610,6 @@ seurat_ob[["harmony_lsi"]] <- CreateDimReducObject(embeddings = harmony_matDR,
 Safe the resulting data object. 
 
 ```{r}
-saveRDS(seurat_ob, "seurat_ob_RNA_ATAC.rds")
+saveRDS(seurat_ob, "~/scData/seurat_ob_RNA_ATAC.rds")
 ```
 

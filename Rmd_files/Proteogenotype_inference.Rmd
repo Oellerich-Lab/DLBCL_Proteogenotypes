@@ -30,7 +30,7 @@ First, load the
 ```{r}
 meta_ident_all <-
   readRDS(
-    "~/Library/CloudStorage/OneDrive-JohannWolfgangGoetheUniversität/2021_DLBCL_proteogenomics/R_data/20220315_meta_identifier_cohort.rds"
+    "~/data/20220315_meta_identifier_cohort.rds"
   )
 ```
 
@@ -39,7 +39,7 @@ Load the latent space from the MuVi. The latent space comprises of latent factor
 ```{r}
 Latent_space <-
   read.csv(
-    "~/20220531_Z.csv" ,
+    "~/muvi/20220531_Z.csv" ,
     header = TRUE
   ) %>%
   rename(c("X" = "Prot_id" )) %>%
@@ -47,7 +47,7 @@ Latent_space <-
 
 Latent_space_meta <-
   read.csv(
-    "~/20220531_factor_meta.csv" ,
+    "~/muvi/20220531_factor_meta.csv" ,
     header = TRUE
   ) %>%
   rename(c("X" = "factor")) %>%

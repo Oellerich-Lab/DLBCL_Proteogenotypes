@@ -25,7 +25,7 @@ The respective scRNA and scATAC data for 43 patients which were mapped to one of
 Load the meta data.
 
 ```{r}
-meta_scPG4 <- read_delim("~/sc_DLBCL/Staudt_scData/20230403.metadata.44dlbcl.tsv", 
+meta_scPG4 <- read_delim("~/scData/20230403.metadata.44dlbcl.tsv", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
 ```
@@ -35,6 +35,8 @@ meta_scPG4 <- read_delim("~/sc_DLBCL/Staudt_scData/20230403.metadata.44dlbcl.tsv
 First, generate a list from all objects and clear the ATAC assay slot.
 
 ```{r}
+load("~/scData/20230403.seurat.44dlbcl.RData")
+
 cornell_obj <- ls()[1:43]
 
 #generate the list object

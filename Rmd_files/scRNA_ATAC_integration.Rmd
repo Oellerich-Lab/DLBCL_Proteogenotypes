@@ -27,7 +27,7 @@ library(scCustomize)
 The scRNA data and the scATAC data were processed independently and finally merged for all cells with present meta data and sufficient quality metrics in scRNA and scATAC.
 
 ```{r}
-seurat_ob <- readRDS("seurat_ob_RNA_ATAC.rds")
+seurat_ob <- readRDS("~/scData/seurat_ob_RNA_ATAC.rds")
 ```
 
 ### WNN integration
@@ -70,6 +70,13 @@ Plot for the integrated dimension.
 ```{r}
 DimPlot(seurat_ob, group.by = c("celltype", "orig.ident"), reduction = "wnn.umap", label = FALSE, label.size = 2.5, repel = TRUE, raster = FALSE)
 ```
+
+Save the integrated object.
+
+```{r}
+saveRDS(seurat_ob, "~/scData/seurat.WNN.integrated.rds")
+```
+
 
 ### Milo DA on WNN
 
@@ -125,7 +132,7 @@ Generate the design matrix.
 ```{r}
 milo_design <- data.frame(colData(milo.sce))[,c("orig.ident", "celltype")]
 
-pg4_vec <- c("cornell_105", "cornell_110", "cornell_122", "cornell_130", "cornell_137", "cornell_19", "cornell_2", "cornell_21")
+pg4_vec <- c("sc-35", "sc-39", "sc-48", "sc-54", "sc-60", "sc-10", "sc-1", "sc-91A")
 
 milo_design <- milo_design %>%
   mutate(pg4 = case_when(orig.ident %in% pg4_vec ~ "pg4", TRUE ~ "other")) %>%
