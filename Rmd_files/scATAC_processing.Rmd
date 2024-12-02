@@ -68,7 +68,6 @@ Strict QC is performed while working with createArrowFiles(). Here, we filter fo
 
 
 ```{r}
-
 library(parallel)
 
 ArrowFiles1 <- createArrowFiles(

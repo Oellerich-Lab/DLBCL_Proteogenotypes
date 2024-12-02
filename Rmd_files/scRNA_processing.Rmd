@@ -69,8 +69,6 @@ for(i in seq(length(seurat_list))) {
   seurat_list[[i]] <- subset(
   x = seurat_list[[i]],
   subset = 
-    #nCount_ATAC < max(meta_scPG4$nCount_ATAC) &
-    #nCount_ATAC > min(meta_scPG4$nCount_ATAC) &
     nCount_RNA < max(meta_scPG4$nCount_RNA) &
     nCount_RNA > min(meta_scPG4$nCount_RNA) &
     percent.mt < max(meta_scPG4$percent.mt)
