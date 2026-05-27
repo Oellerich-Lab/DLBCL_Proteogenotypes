@@ -4,10 +4,10 @@ This respository contains code from the analysis presented in the paper:
 
 ## Pathogenesis of Diffuse Large B-cell Lymphoma Proteogenotypes
 
-*Julius C. Enssle<sup>1,2,3,4,33</sup>, Björn Häupl<sup>1,2,3,5,33</sup>, Arber Qoku<sup>2,5,6,33</sup>, Boya Wang<sup>4</sup>, George W. Wright<sup>7</sup>, Sharon Barrans<sup>8</sup>, Yulai Zhou<sup>9</sup>, Matthew A. Care<sup>10</sup>, Cathy Burton<sup>8</sup>, Caitlin Gribbin<sup>11</sup>, Stephan Eckert<sup>10,11</sup>, Jennifer Ziello<sup>12</sup>, Jason Weirather<sup>13</sup>, Yibo Dai<sup>14</sup>, Atish Kizhakeyil<sup>15</sup>, Xubin Li <sup>15</sup>, James D. Phelan<sup>4</sup>, Smriti Kanangat<sub>4,16</sup>, Stephan Eckert<sub>17,18</sup>, Sebastian Scheich<sup>1,2,3,19</sup>, Sebastian Wolf<sup>1,2,3,19</sup>,  Da Wei Huang<sup>4</sup>, Josefine Jakob<sup>1,3</sup>, Sebastian P. Perner<sup>1,2,5</sup>, Andrea Di Fonzo<sup>1,2,32</sup>, Martine Pape<sup>1,2</sup>, Marion Bodach<sup>1,2,5</sup>, Dominique Jahn<sup>1,2,5</sup>, Uwe Plessmann<sup>2,20</sup>, Annette M. Staiger<sup>21,22</sup>, German Ott<sup>21</sup>, Philipp Berning<sup>23</sup>, Georg Lenz<sup>23</sup>, Daniel J. Hodson<sup>24</sup>, Bernhard Kuster<sup>14,17</sup>, Roland Schmitz<sup>25</sup>, Henning Urlaub<sup>20,26</sup>, Ari M. Melnick<sub>27,28</sup> Reuben Tooze<sup>8,29</sup>, Coraline Mlynarczyk<sup>9</sup>, Giorgio Inghirami<sup>30</sup>, Florian Buettner<sup>2,3,5,6,31,34</sup>, Louis M. Staudt<sup>4,34</sup>, Thomas Oellerich<sup>1,2,3,5,19,34,35</sup>*
+*Julius C. Enssle<sup>1,2,3,4,33</sup>, Björn Häupl<sup>1,2,3,5,33</sup>, Arber Qoku<sup>2,5,6,33</sup>, Boya Wang<sup>4</sup>, George W. Wright<sup>7</sup>, Sharon Barrans<sup>8</sup>, Yulai Zhou<sup>9</sup>, Matthew A. Care<sup>10</sup>, Cathy Burton<sup>8</sup>, Caitlin Gribbin<sup>11</sup>, Stephan Eckert<sup>10,11</sup>, Jennifer Ziello<sup>12</sup>, Jason Weirather<sup>13</sup>, Yibo Dai<sup>14</sup>, Atish Kizhakeyil<sup>15</sup>, Xubin Li <sup>15</sup>, James D. Phelan<sup>4</sup>, Smriti Kanangat<sup>4,16</sup>, Stephan Eckert<sub>17,18</sup>, Sebastian Scheich<sup>1,2,3,19</sup>, Sebastian Wolf<sup>1,2,3,19</sup>,  Da Wei Huang<sup>4</sup>, Josefine Jakob<sup>1,3</sup>, Sebastian P. Perner<sup>1,2,5</sup>, Andrea Di Fonzo<sup>1,2,32</sup>, Martine Pape<sup>1,2</sup>, Marion Bodach<sup>1,2,5</sup>, Dominique Jahn<sup>1,2,5</sup>, Uwe Plessmann<sup>2,20</sup>, Annette M. Staiger<sup>21,22</sup>, German Ott<sup>21</sup>, Philipp Berning<sup>23</sup>, Georg Lenz<sup>23</sup>, Daniel J. Hodson<sup>24</sup>, Bernhard Kuster<sup>14,17</sup>, Roland Schmitz<sup>25</sup>, Henning Urlaub<sup>20,26</sup>, Ari M. Melnick<sub>27,28</sup> Reuben Tooze<sup>8,29</sup>, Coraline Mlynarczyk<sup>9</sup>, Giorgio Inghirami<sup>30</sup>, Florian Buettner<sup>2,3,5,6,31,34</sup>, Louis M. Staudt<sup>4,34</sup>, Thomas Oellerich<sup>1,2,3,5,19,34,35</sup>*
 
-Affiliations:	
-1  Department of Medicine, Hematology and Oncology, University Hospital, Goethe University Frankfurt, Frankfurt am Main, Germany \
+Affiliations:\
+<sub>1  Department of Medicine, Hematology and Oncology, University Hospital, Goethe University Frankfurt, Frankfurt am Main, Germany \
 2  German Cancer Consortium (DKTK), Partner Site Frankfurt/Mainz, a Partnership Between DKFZ and UCT Frankfurt-Marburg, Germany,
 Frankfurt am Main, Germany \
 3  Frankfurt Cancer Institute (FCI), Frankfurt am Main, Germany\
@@ -43,7 +43,7 @@ NY, USA\
 31  Goethe University Frankfurt, Department of Medicine, Frankfurt Am Main, Germany\
 32  Present address: Analytical Chemistry Lab, Istituto Italiano di Tecnologia, Genoa, Italy
 33,34 These authors contributed equally\ 
-35	Lead contact\
+35	Lead contact\<\sub>
 
 Corresponding author (#) email: oellerich@em.uni-frankfurt.de, buettner@med.uni-frankfurt.de 
 
