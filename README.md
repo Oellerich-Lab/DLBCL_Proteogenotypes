@@ -41,9 +41,10 @@ NY, USA\
 29  Division of Haematology and Immunology, Leeds Institute of Medical Research, University of Leeds, Leeds, UK\
 30  Department of Pathology and Laboratory Medicine, Weill Cornell Medicine, New York, NY, USA\
 31  Goethe University Frankfurt, Department of Medicine, Frankfurt Am Main, Germany\
-32  Present address: Analytical Chemistry Lab, Istituto Italiano di Tecnologia, Genoa, Italy
+32  Present address: Analytical Chemistry Lab, Istituto Italiano di Tecnologia, Genoa, Italy\
 33,34 These authors contributed equally\ 
-35	Lead contact\<\sub>
+35	Lead contact
+<\sub>
 
 Corresponding author (#) email: oellerich@em.uni-frankfurt.de, buettner@med.uni-frankfurt.de 
 
