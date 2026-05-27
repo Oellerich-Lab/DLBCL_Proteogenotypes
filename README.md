@@ -57,7 +57,7 @@ Corresponding author (#) email: oellerich@em.uni-frankfurt.de, buettner@med.uni-
 - Protein expression data: https://massive.ucsd.edu/ProteoSAFe/static/massive.jsp
 - scRNA and scATAC sequencing data: EGA: [EGAS50000001227](https://www.ega-archive.org/studies/EGAS50000001227), https://www.cell.com/cancer-cell/fulltext/S1535-6108(25)00549-5
 
-### DLBCL proteogenotype classifier
+### DLBCL proteogenotype classifier:
 https://dlbcl-pg-classifier.uni-frankfurt.de/
 
 For further questions, please reach out the the corresponding author.
