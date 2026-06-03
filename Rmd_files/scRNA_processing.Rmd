@@ -20,7 +20,7 @@ library(EnsDb.Hsapiens.v86)
 
 ## Data 
 
-The respective scRNA and scATAC data for 43 patients which were mapped to one of the proteogenomic subgroups was processed via 10X multiome platform and CellRanger. The resulting CellRanger output has already been loaded by Boya Wang into seurat objects. This data is accessible at TBI.
+The respective scRNA and scATAC data for 43 patients which were mapped to one of the proteogenomic subgroups was processed via 10X multiome platform and CellRanger. The resulting CellRanger output has already been loaded by Boya Wang into seurat objects. This data is accessible at as indicated in the manuscript and this repository.
 
 Load the meta data.
 
