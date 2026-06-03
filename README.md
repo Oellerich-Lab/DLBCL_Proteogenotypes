@@ -32,7 +32,7 @@ and Pathology, Yale School of Medicine, New Haven, CT, USA\
 21	Department of Clinical Pathology, Robert-Bosch-Krankenhaus, Stuttgart, Germany\
 22	Dr. Margarete Fischer-Bosch Institute for Clinical Pharmacology, Stuttgart and University of Tuebingen, Tuebingen, Germany\
 23  Department of Medicine A - Hematology, Oncology and Pneumology, University Hospital Muenster, Muenster, Germany\
-24  Department of Haematology, Cambridge Stem Cell Institute, University of Cambridge, Jeffrey Cheah Biomedical Centre, Cambridge, UK
+24  Department of Haematology, Cambridge Stem Cell Institute, University of Cambridge, Jeffrey Cheah Biomedical Centre, Cambridge, UK\
 25  Institute of Pathology, Justus Liebig University Giessen, Giessen, Germany\
 26  Bioanalytics, Institute of Clinical Chemistry, University Medical Center Goettingen, Goettingen, Germany\
 27  Josep Carreras Leukemia Research Institute, Barcelona, Spain\
